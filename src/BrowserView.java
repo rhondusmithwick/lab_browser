@@ -61,8 +61,7 @@ public class BrowserView {
     private Button myBackButton;
     private Button myNextButton;
     private Button myHomeButton;
-    // favorites
-    private ComboBox<String> myFavorites;
+    private ComboBox<String> favoritesCombo;
     // get strings from resource file
     private ResourceBundle myResources;
     // the data
@@ -84,20 +83,19 @@ public class BrowserView {
         enableButtons();
         // create scene to hold UI
         myScene = new Scene(root, DEFAULT_SIZE.width, DEFAULT_SIZE.height);
-        //myScene.getStylesheets().add(DEFAULT_RESOURCE_PACKAGE + STYLESHEET);
+        myScene.getStylesheets().add(DEFAULT_RESOURCE_PACKAGE + STYLESHEET);
     }
 
     /**
      * Display given URL.
      */
     public void showPage (String url) {
-        URL valid = myModel.go(url);
-        if (valid != null) {
-            update(valid);
-        }
-        else {
-            showError("Could not load " + url);
-        }
+       try {
+           URL valid = myModel.go(url);
+           update(valid);
+        } catch (BrowserException e) {
+           showError(e.getMessage());
+       }
     }
 
     /**
@@ -141,9 +139,12 @@ public class BrowserView {
 
     // change page to favorite choice
     private void showFavorite (String favorite) {
-        showPage(myModel.getFavorite(favorite).toString());
+        try {
+            showPage(myModel.getFavorite(favorite).toString());
+        } catch(Exception e) {
+            showError(e.getMessage());
+        }
         // reset favorites ComboBox so the same choice can be made again
-        myFavorites.setValue(null);
     }
 
     // update just the view to display given URL
@@ -163,7 +164,7 @@ public class BrowserView {
         // did user make a choice?
         if (response.isPresent()) {
             myModel.addFavorite(response.get());
-            myFavorites.getItems().add(response.get());
+            favoritesCombo.getItems().add(response.get());
         }
     }
 
@@ -208,6 +209,7 @@ public class BrowserView {
             }      
         });
         result.getChildren().add(myBackButton);
+        myBackButton.getStyleClass().add("back");
         // new style way to do set up callback (lambdas)
         myNextButton = makeButton("NextCommand", event -> next());
         result.getChildren().add(myNextButton);
@@ -218,16 +220,31 @@ public class BrowserView {
         result.getChildren().add(makeButton("GoCommand", showHandler));
         myURLDisplay = makeInputField(40, showHandler);
         result.getChildren().add(myURLDisplay);
+        favoritesCombo =createCombo();
+        result.getChildren().add(favoritesCombo);
         return result;
     }
+    public ComboBox<String> createCombo(){
+        ComboBox<String> cb = new ComboBox<>();
+        cb.setOnAction(t -> {
+            String selectedItem = cb.getSelectionModel().getSelectedItem();
+            String url = myModel.getMyFavorites().get(selectedItem).toString();
+            showPage(url);
+        });
+        return cb;
+    }
+
 
     // make buttons for setting favorites/home URLs
     private Node makePreferencesPanel () {
         HBox result = new HBox();
-        myFavorites = new ComboBox<String>();
         // ADD REST OF CODE HERE
         result.getChildren().add(makeButton("SetHomeCommand", event -> {
             myModel.setHome();
+            enableButtons();
+        }));
+        result.getChildren().add(makeButton("AddFavoriteCommand", event -> {
+            addFavorite();
             enableButtons();
         }));
         return result;
@@ -302,5 +319,5 @@ public class BrowserView {
                 }
             }
         }
-    };
+    }
 }

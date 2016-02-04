@@ -4,12 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 
 
 /**
  * This represents the heart of the browser: the collections
  * that organize all the URLs into useful structures.
- * 
+ *
  * @author Robert C. Duvall
  */
 public class BrowserModel {
@@ -20,24 +21,31 @@ public class BrowserModel {
     private URL myCurrentURL;
     private int myCurrentIndex;
     private List<URL> myHistory;
+    private ResourceBundle errorResources;
+
+    public Map<String, URL> getMyFavorites() {
+        return myFavorites;
+    }
+
     private Map<String, URL> myFavorites;
 
 
     /**
      * Creates an empty model.
      */
-    public BrowserModel () {
+    public BrowserModel() {
         myHome = null;
         myCurrentURL = null;
         myCurrentIndex = -1;
         myHistory = new ArrayList<>();
         myFavorites = new HashMap<>();
+        errorResources = ResourceBundle.getBundle(BrowserView.DEFAULT_RESOURCE_PACKAGE + "Errors");
     }
 
     /**
      * Returns the first page in next history, null if next history is empty.
      */
-    public URL next () {
+    public URL next() {
         if (hasNext()) {
             myCurrentIndex++;
             return myHistory.get(myCurrentIndex);
@@ -48,63 +56,63 @@ public class BrowserModel {
     /**
      * Returns the first page in back history, null if back history is empty.
      */
-    public URL back () {
+    public URL back() {
         if (hasPrevious()) {
             myCurrentIndex--;
             return myHistory.get(myCurrentIndex);
+        } else {
+            String error = errorResources.getString("ErrorOnBack");
+            throw new BrowserException(error);
         }
-        return null;
     }
 
     /**
      * Changes current page to given URL, removing next history.
      */
-    public URL go (String url) {
+    public URL go(String url) {
         try {
             URL tmp = completeURL(url);
             // unfortunately, completeURL may not have returned a valid URL, so test it
             tmp.openStream();
             // if successful, remember this URL
             myCurrentURL = tmp;
-            if (myCurrentURL != null) {
-                if (hasNext()) {
-                    myHistory = myHistory.subList(0, myCurrentIndex + 1);
-                }
-                myHistory.add(myCurrentURL);
-                myCurrentIndex++;
+            if (hasNext()) {
+                myHistory = myHistory.subList(0, myCurrentIndex + 1);
             }
+            myHistory.add(myCurrentURL);
+            myCurrentIndex++;
             return myCurrentURL;
-        }
-        catch (Exception e) {
-            return null;
+        } catch (Exception e) {
+            String error = String.format(errorResources.getString("ErrorOnGo"), url);
+            throw new BrowserException(error);
         }
     }
 
     /**
      * Returns true if there is a next URL available
      */
-    public boolean hasNext () {
+    public boolean hasNext() {
         return myCurrentIndex < (myHistory.size() - 1);
     }
 
     /**
      * Returns true if there is a previous URL available
      */
-    public boolean hasPrevious () {
+    public boolean hasPrevious() {
         return myCurrentIndex > 0;
     }
 
     /**
      * Returns URL of the current home page or null if none is set.
      */
-    public URL getHome () {
+    public URL getHome() {
         return myHome;
     }
 
     /**
      * Sets current home page to the current URL being viewed.
      */
-    public void setHome () {
+    public void setHome() {
         // just in case, might be called before a page is visited
         if (myCurrentURL != null) {
             myHome = myCurrentURL;
@@ -114,7 +122,7 @@ public class BrowserModel {
     /**
      * Adds current URL being viewed to favorites collection with given name.
      */
-    public void addFavorite (String name) {
+    public void addFavorite(String name) {
         // just in case, might be called before a page is visited
         if (name != null && !name.equals("") && myCurrentURL != null) {
             myFavorites.put(name, myCurrentURL);
@@ -124,15 +132,20 @@ public class BrowserModel {
     /**
      * Returns URL from favorites associated with given name, null if none set.
      */
-    public URL getFavorite (String name) {
+    /*
+    *********
+     */
+    public URL getFavorite(String name) {
         if (name != null && !name.equals("") && myFavorites.containsKey(name)) {
             return myFavorites.get(name);
+        } else {
+            String error = String.format(errorResources.getString("ErrorOnGetFavorite"), name);
+            throw new BrowserException(error);
         }
-        return null;
     }
 
     // deal with a potentially incomplete URL
-    private URL completeURL (String possible) {
+    private URL completeURL(String possible) {
         try {
             // try it as is
             return new URL(possible);
@@ -146,7 +159,8 @@ public class BrowserModel {
                     // e.g., let user leave off initial protocol
                     return new URL(PROTOCOL_PREFIX + possible);
                 } catch (MalformedURLException eee) {
-                    return null;
+                    String error = String.format(errorResources.getString("ErrorOnGo"), possible);
+                    throw new BrowserException(error);
                 }
             }
         }
