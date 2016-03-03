@@ -1,4 +1,6 @@
 import java.awt.Dimension;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -239,21 +241,18 @@ public class BrowserView {
     private Node makePreferencesPanel () {
         HBox result = new HBox();
         // ADD REST OF CODE HERE
-        result.getChildren().add(makeButton("SetHomeCommand", event -> {
-            myModel.setHome();
-            enableButtons();
-        }));
-        result.getChildren().add(makeButton("AddFavoriteCommand", event -> {
-            addFavorite();
-            enableButtons();
-        }));
+
+        result.getChildren().add(makeButton("SetHomeCommand", myModel, "setHome"));
+
+        result.getChildren().add(makeButton("AddFavoriteCommand",this, "addFavorites"));
+        enableButtons();
         return result;
     }
 
     // makes a button using either an image or a label
-    private Button makeButton (String property, EventHandler<ActionEvent> handler) {
+    private Button makeButton (String property, Object obj, String methodName) {
         // represent all supported image suffixes
-        final String IMAGEFILE_SUFFIXES = 
+        final String IMAGEFILE_SUFFIXES =
             String.format(".*\\.(%s)", String.join("|", ImageIO.getReaderFileSuffixes()));
 
         Button result = new Button();
@@ -264,7 +263,19 @@ public class BrowserView {
         } else {
             result.setText(label);
         }
-        result.setOnAction(handler);
+        try {
+            Method method = obj.getClass().getMethod(methodName);
+            result.setOnAction(t -> {
+                try {
+                    method.invoke(obj);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return result;
     }
 
